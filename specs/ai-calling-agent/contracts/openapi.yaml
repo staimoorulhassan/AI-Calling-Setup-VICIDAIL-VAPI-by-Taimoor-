@@ -1,0 +1,540 @@
+openapi: 3.1.0
+info:
+  title: ACS Backend API
+  version: "1.0"
+  description: >
+    AI Calling Agent System — REST API for the webapp frontend, VAPI webhooks,
+    and operator integrations.
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development
+  - url: https://acs.yourdomain.com/api
+    description: Production
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:   { type: string, example: UNAUTHORIZED }
+        message: { type: string, example: "Invalid or expired token" }
+
+    Pagination:
+      type: object
+      properties:
+        page:       { type: integer, example: 1 }
+        per_page:   { type: integer, example: 50 }
+        total:      { type: integer, example: 1250 }
+        total_pages:{ type: integer, example: 25 }
+
+    User:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        email:       { type: string, format: email }
+        name:        { type: string }
+        role:        { type: string, enum: [admin, operator] }
+        last_login_at: { type: string, format: date-time, nullable: true }
+
+    Campaign:
+      type: object
+      properties:
+        id:                    { type: string, format: uuid }
+        name:                  { type: string }
+        status:                { type: string, enum: [active, paused, disabled] }
+        vicidial_campaign_id:  { type: string, nullable: true }
+        vapi_assistant_id:     { type: string, nullable: true }
+        system_prompt:         { type: string }
+        first_message:         { type: string }
+        voice_model:           { type: string }
+        llm_model:             { type: string }
+        language:              { type: string }
+        amd_sensitivity:       { type: string, enum: [low, medium, high] }
+        verifier_phone:        { type: string, nullable: true }
+        caller_ids:            { type: array, items: { type: string } }
+        created_at:            { type: string, format: date-time }
+        updated_at:            { type: string, format: date-time }
+
+    Call:
+      type: object
+      properties:
+        id:                  { type: string, format: uuid }
+        campaign_id:         { type: string, format: uuid }
+        campaign_name:       { type: string }
+        phone_number:        { type: string }
+        status:              { type: string, enum: [initiated, ringing, connected, on_hold, transferring, ended, failed] }
+        disposition:         { type: string, enum: [answered, voicemail, ivr, transferred, no_answer, failed, test], nullable: true }
+        test_mode:           { type: boolean }
+        started_at:          { type: string, format: date-time }
+        answered_at:         { type: string, format: date-time, nullable: true }
+        ended_at:            { type: string, format: date-time, nullable: true }
+        duration_seconds:    { type: integer, nullable: true }
+        ai_summary:          { type: string, nullable: true }
+
+    TranscriptEntry:
+      type: object
+      properties:
+        id:         { type: string, format: uuid }
+        speaker:    { type: string, enum: [ai, human] }
+        text:       { type: string }
+        spoken_at:  { type: string, format: date-time }
+        sequence:   { type: integer }
+        confidence: { type: number, nullable: true }
+
+    Event:
+      type: object
+      properties:
+        id:           { type: string, format: uuid }
+        event_type:   { type: string }
+        payload:      { type: object }
+        occurred_at:  { type: string, format: date-time }
+        source:       { type: string, enum: [vapi, vicidial, amd, acsbackend, operator] }
+
+    AgentMetrics:
+      type: object
+      properties:
+        campaign_id:        { type: string, format: uuid }
+        campaign_name:      { type: string }
+        total_calls:        { type: integer }
+        answered_calls:     { type: integer }
+        answer_rate:        { type: number, description: "0.0–1.0" }
+        transfer_count:     { type: integer }
+        transfer_rate:      { type: number }
+        avg_duration_seconds: { type: number }
+        disposition_breakdown:
+          type: object
+          additionalProperties: { type: integer }
+
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [healthy, degraded, unhealthy] }
+        services:
+          type: object
+          properties:
+            vicidial: { type: string, enum: [healthy, degraded, unhealthy] }
+            vapi:     { type: string, enum: [healthy, degraded, unhealthy] }
+            database: { type: string, enum: [healthy, degraded, unhealthy] }
+        checked_at: { type: string, format: date-time }
+
+paths:
+
+  # ─────────────────── AUTH ───────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:    { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:      { type: string, description: "JWT — valid 8 hours" }
+                  expires_at: { type: string, format: date-time }
+                  user:       { $ref: "#/components/schemas/User" }
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current session token
+      responses:
+        "204": { description: Logged out }
+        "401": { description: Not authenticated }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+
+  # ─────────────────── CAMPAIGNS ───────────────────
+  /campaigns:
+    get:
+      tags: [Campaigns]
+      summary: List campaigns
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, paused, disabled] }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Campaign" } }
+
+    post:
+      tags: [Campaigns]
+      summary: Create campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, system_prompt, first_message]
+              properties:
+                name:                  { type: string }
+                system_prompt:         { type: string }
+                first_message:         { type: string }
+                voice_model:           { type: string, default: "11labs-Rachel" }
+                llm_model:             { type: string, default: "gpt-4o-mini" }
+                language:              { type: string, default: "en-US" }
+                amd_sensitivity:       { type: string, enum: [low, medium, high], default: medium }
+                verifier_phone:        { type: string }
+                caller_ids:            { type: array, items: { type: string } }
+                vicidial_campaign_id:  { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Campaign" }
+        "422": { description: Validation error }
+
+  /campaigns/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+
+    get:
+      tags: [Campaigns]
+      summary: Get campaign by ID
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Campaign" }
+        "404": { description: Not found }
+
+    put:
+      tags: [Campaigns]
+      summary: Update campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Campaign" }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Campaign" }
+
+    delete:
+      tags: [Campaigns]
+      summary: Delete campaign (must be disabled first)
+      responses:
+        "204": { description: Deleted }
+        "409": { description: Campaign is active — disable first }
+
+  /campaigns/{id}/status:
+    patch:
+      tags: [Campaigns]
+      summary: Enable or disable a campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, paused, disabled] }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Campaign" }
+
+  # ─────────────────── CALLS ───────────────────
+  /calls:
+    get:
+      tags: [Calls]
+      summary: List call logs (paginated)
+      parameters:
+        - in: query
+          name: campaign_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+          description: "ISO date e.g. 2026-06-01"
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+        - in: query
+          name: disposition
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:       { type: array, items: { $ref: "#/components/schemas/Call" } }
+                  pagination: { $ref: "#/components/schemas/Pagination" }
+
+  /calls/live:
+    get:
+      tags: [Calls]
+      summary: Get all currently active calls
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Call" } }
+
+  /calls/test:
+    post:
+      tags: [Calls]
+      summary: Initiate a test call from the agent test panel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_number, campaign_id]
+              properties:
+                phone_number: { type: string, pattern: "^\\+?[1-9]\\d{7,14}$" }
+                campaign_id:  { type: string, format: uuid }
+      responses:
+        "202":
+          description: Test call initiated; subscribe to WebSocket /ws/transcript/:call_id for live updates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  call_id:      { type: string, format: uuid }
+                  ws_endpoint:  { type: string, example: "/ws/transcript/abc123" }
+        "422": { description: Validation error (invalid phone number or inactive campaign) }
+
+  /calls/export:
+    get:
+      tags: [Calls]
+      summary: Export call log as CSV
+      parameters:
+        - in: query
+          name: campaign_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: CSV file download
+          content:
+            text/csv:
+              schema: { type: string }
+          headers:
+            Content-Disposition:
+              schema: { type: string, example: 'attachment; filename="calls-2026-06-09.csv"' }
+
+  /calls/{id}:
+    get:
+      tags: [Calls]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      summary: Get call detail
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Call" }
+        "404": { description: Not found }
+
+  /calls/{id}/transcript:
+    get:
+      tags: [Calls]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      summary: Get call transcript
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  call_id: { type: string, format: uuid }
+                  entries: { type: array, items: { $ref: "#/components/schemas/TranscriptEntry" } }
+
+  /calls/{id}/events:
+    get:
+      tags: [Calls]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      summary: Get call lifecycle events
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  call_id: { type: string, format: uuid }
+                  events:  { type: array, items: { $ref: "#/components/schemas/Event" } }
+
+  /calls/{id}/transfer:
+    post:
+      tags: [Calls]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      summary: Trigger 3-way transfer to verifier
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                verifier_phone:
+                  type: string
+                  description: "Override verifier phone for this transfer (optional; defaults to campaign setting)"
+      responses:
+        "202":
+          description: Transfer initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  call_id:   { type: string, format: uuid }
+                  status:    { type: string, example: "transferring" }
+                  verifier_phone: { type: string }
+        "409": { description: Call not in transferable state }
+        "422": { description: No verifier phone configured }
+
+  # ─────────────────── METRICS ───────────────────
+  /metrics/agents:
+    get:
+      tags: [Metrics]
+      summary: Per-campaign metrics
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AgentMetrics" } }
+
+  # ─────────────────── HEALTH ───────────────────
+  /health:
+    get:
+      tags: [Health]
+      security: []
+      summary: System health check
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: One or more services unhealthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  # ─────────────────── VAPI WEBHOOK ───────────────────
+  /webhooks/vapi:
+    post:
+      tags: [Webhooks]
+      security: []
+      summary: Receive call lifecycle events from VAPI
+      description: >
+        VAPI posts events here. Endpoint must be configured in VAPI assistant
+        settings. Protected by `VAPI_WEBHOOK_SECRET` header validation.
+      parameters:
+        - in: header
+          name: x-vapi-secret
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:    { type: string, example: "end-of-call-report" }
+                call:    { type: object }
+                message: { type: object }
+      responses:
+        "200": { description: Event processed }
+        "401": { description: Invalid webhook secret }

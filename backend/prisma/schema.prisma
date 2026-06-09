@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  admin
+  operator
+}
+
+enum CampaignStatus {
+  active
+  paused
+  disabled
+}
+
+enum AmdSensitivity {
+  low
+  medium
+  high
+}
+
+enum CallStatus {
+  initiated
+  ringing
+  connected
+  on_hold
+  transferring
+  ended
+  failed
+}
+
+enum CallDisposition {
+  answered
+  voicemail
+  ivr
+  transferred
+  no_answer
+  failed
+  test
+  transfer_failed
+}
+
+enum EventSource {
+  vapi
+  vicidial
+  amd
+  acsbackend
+  operator
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String
+  role          UserRole  @default(operator)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+
+  campaigns Campaign[]
+  calls     Call[]
+  sessions  Session[]
+
+  @@map("users")
+}
+
+model Campaign {
+  id                  String         @id @default(uuid())
+  name                String
+  status              CampaignStatus @default(paused)
+  vicidialCampaignId  String?        @map("vicidial_campaign_id")
+  vapiAssistantId     String?        @map("vapi_assistant_id")
+  systemPrompt        String         @map("system_prompt")
+  firstMessage        String         @map("first_message")
+  voiceModel          String         @default("11labs-Rachel") @map("voice_model")
+  llmModel            String         @default("gpt-4o-mini") @map("llm_model")
+  language            String         @default("en-US")
+  amdSensitivity      AmdSensitivity @default(medium) @map("amd_sensitivity")
+  verifierPhone       String?        @map("verifier_phone")
+  callerIds           String[]       @map("caller_ids")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  createdById         String         @map("created_by")
+
+  createdBy User   @relation(fields: [createdById], references: [id])
+  calls     Call[]
+
+  @@index([status])
+  @@index([vicidialCampaignId])
+  @@map("campaigns")
+}
+
+model Call {
+  id                  String           @id @default(uuid())
+  campaignId          String           @map("campaign_id")
+  phoneNumber         String           @map("phone_number")
+  status              CallStatus       @default(initiated)
+  disposition         CallDisposition?
+  vapiCallId          String?          @unique @map("vapi_call_id")
+  vicidialChannel     String?          @map("vicidial_channel")
+  testMode            Boolean          @default(false) @map("test_mode")
+  startedAt           DateTime         @default(now()) @map("started_at")
+  answeredAt          DateTime?        @map("answered_at")
+  endedAt             DateTime?        @map("ended_at")
+  durationSeconds     Int?             @map("duration_seconds")
+  transferStartedAt   DateTime?        @map("transfer_started_at")
+  verifierJoinedAt    DateTime?        @map("verifier_joined_at")
+  aiSummary           String?          @map("ai_summary")
+  createdById         String?          @map("created_by")
+
+  campaign   Campaign      @relation(fields: [campaignId], references: [id])
+  createdBy  User?         @relation(fields: [createdById], references: [id])
+  transcripts Transcript[]
+  events     CallEvent[]
+
+  @@index([campaignId, startedAt(sort: Desc)])
+  @@index([startedAt(sort: Desc)])
+  @@index([vapiCallId])
+  @@index([disposition])
+  @@map("calls")
+}
+
+model Transcript {
+  id         String   @id @default(uuid())
+  callId     String   @map("call_id")
+  speaker    String
+  text       String
+  confidence Decimal? @db.Decimal(4, 3)
+  spokenAt   DateTime @map("spoken_at")
+  sequence   Int
+
+  call Call @relation(fields: [callId], references: [id])
+
+  @@index([callId, sequence])
+  @@index([callId, spokenAt])
+  @@map("transcripts")
+}
+
+model CallEvent {
+  id          String      @id @default(uuid())
+  callId      String      @map("call_id")
+  eventType   String      @map("event_type")
+  payload     Json        @default("{}")
+  occurredAt  DateTime    @default(now()) @map("occurred_at")
+  source      EventSource
+
+  call Call @relation(fields: [callId], references: [id])
+
+  @@index([callId, occurredAt])
+  @@index([eventType])
+  @@map("call_events")
+}
+
+model Session {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  tokenHash   String    @map("token_hash")
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  ipAddress   String?   @map("ip_address")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tokenHash])
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
