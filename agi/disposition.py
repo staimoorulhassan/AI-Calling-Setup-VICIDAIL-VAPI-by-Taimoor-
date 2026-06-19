@@ -70,7 +70,10 @@ def main():
         params["comments"] = comments
 
     try:
-        resp = requests.get(api_url, params=params, timeout=5.0)
+        import urllib3
+        urllib3.disable_warnings()
+        resp = requests.get(api_url, params=params, timeout=5.0,
+                            verify=vic.get("verify_tls", False))
         agi.verbose(
             f"disposition: lead={lead_id} status={status} "
             f"http={resp.status_code} body={resp.text.strip()[:200]}"
