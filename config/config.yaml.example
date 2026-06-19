@@ -2,7 +2,7 @@
 # Read by agi/precheck_amd.py and agi/disposition.py.
 
 vicidial:
-  api_url: "http://127.0.0.1/vicidial/non_agent_api.php"
+  api_url: "https://127.0.0.1/vicidial/non_agent_api.php"
   api_user: "REPLACE_ME"        # ViciDial admin user with API access
   api_pass: "REPLACE_ME"
   source: "AIAgent"             # appears in CDR/audit trail
@@ -18,3 +18,4 @@ vapi:
 ai:
   manager_url: ""               # optional: HTTP endpoint for campaign overrides
   default_timeout_sec: 600
+  verify_tls: false             # leave false for self-signed localhost cert
