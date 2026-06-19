@@ -1,0 +1,20 @@
+# /etc/ai_agent/config.yaml - copy to that path and fill in real values.
+# Read by agi/precheck_amd.py and agi/disposition.py.
+
+vicidial:
+  api_url: "http://127.0.0.1/vicidial/non_agent_api.php"
+  api_user: "REPLACE_ME"        # ViciDial admin user with API access
+  api_pass: "REPLACE_ME"
+  source: "AIAgent"             # appears in CDR/audit trail
+
+avr_bridge:
+  host: "172.18.0.5"            # avr-asterisk container IP on the avr docker net
+  port: 5060
+
+vapi:
+  assistant_id: "REPLACE_ME"
+  notes: "AI assistant configured via VAPI dashboard"
+
+ai:
+  manager_url: ""               # optional: HTTP endpoint for campaign overrides
+  default_timeout_sec: 600
