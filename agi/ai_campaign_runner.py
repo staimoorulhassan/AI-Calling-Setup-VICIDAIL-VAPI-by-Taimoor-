@@ -43,12 +43,22 @@ def load_config():
 
 
 def load_db_creds():
+    try:
+        f = open(ASTGUI_CONF)
+    except FileNotFoundError:
+        LOG.error("astguiclient.conf missing: %s", ASTGUI_CONF)
+        sys.exit(2)
     cfg = {}
-    with open(ASTGUI_CONF) as f:
+    with f:
         for line in f:
             if "=>" in line and not line.lstrip().startswith("#"):
                 k, _, v = line.partition("=>")
                 cfg[k.strip()] = v.strip()
+    required = ("VARDB_server", "VARDB_user", "VARDB_pass", "VARDB_database")
+    missing = [k for k in required if k not in cfg]
+    if missing:
+        LOG.error("missing keys in %s: %s", ASTGUI_CONF, ", ".join(missing))
+        sys.exit(2)
     try:
         port = int(cfg.get("VARDB_port", 3306))
     except ValueError:
@@ -124,7 +134,11 @@ async def run(args):
 
     db_cfg = load_db_creds()
     LOG.info("DB %s@%s/%s", db_cfg["user"], db_cfg["host"], db_cfg["db"])
-    conn = pymysql.connect(**db_cfg)
+    try:
+        conn = pymysql.connect(**db_cfg)
+    except pymysql.Error as exc:
+        LOG.error("database connection failed: %s", exc)
+        sys.exit(2)
 
     manager = Manager(
         host=ami_cfg.get("host", "127.0.0.1"),
@@ -132,7 +146,12 @@ async def run(args):
         username=ami_cfg["username"],
         secret=ami_cfg.get("secret", ""),
     )
-    await manager.connect()
+    try:
+        await manager.connect()
+    except Exception as exc:  # noqa: BLE001
+        LOG.error("AMI connection failed: %s", exc)
+        conn.close()
+        sys.exit(2)
     LOG.info("AMI connected as %s", ami_cfg["username"])
 
     in_flight = set()
@@ -201,11 +220,13 @@ async def run(args):
                 uid = getattr(msg, "Uniqueid", None) or uid
             if uid and uid != "<unknown>":
                 in_flight.add(uid)
+                LOG.info("originate lead=%s phone=%s uniqueid=%s",
+                         lead_id, phone, uid)
             else:
+                # No Uniqueid returned — release slot; hangup won't fire for it
                 semaphore.release()
-
-            LOG.info("originate lead=%s phone=%s uniqueid=%s",
-                     lead_id, phone, uid)
+                LOG.warning("originate lead=%s: no Uniqueid in response; "
+                            "slot released immediately", lead_id)
             mark_lead(conn, lead_id, "AI")
         sent += 1
 
@@ -219,17 +240,35 @@ async def run(args):
     conn.close()
 
 
+def _positive_int(val):
+    v = int(val)
+    if v < 1:
+        raise argparse.ArgumentTypeError("must be >= 1")
+    return v
+
+
+def _positive_float(val):
+    v = float(val)
+    if v <= 0:
+        raise argparse.ArgumentTypeError("must be > 0")
+    return v
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--list", type=int, required=True)
-    p.add_argument("--rate", type=float, default=30.0)
-    p.add_argument("--concurrent", type=int, default=1)
+    p.add_argument("--rate", type=_positive_float, default=30.0)
+    p.add_argument("--concurrent", type=_positive_int, default=1)
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--statuses", default="NEW")
     p.add_argument("--campaign", default="AI_CAMP")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--verbose", "-v", action="store_true")
     args = p.parse_args()
+
+    if not any(s.strip() for s in args.statuses.split(",")):
+        p.error("--statuses must contain at least one non-empty value")
+
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",

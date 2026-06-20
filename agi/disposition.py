@@ -83,6 +83,7 @@ def main():
         )
     except requests.RequestException as exc:
         agi.verbose(f"disposition: ViciDial API error: {exc}")
+        sys.exit(2)
 
 
 if __name__ == "__main__":
