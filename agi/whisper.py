@@ -17,19 +17,43 @@ sys.stdout = open(sys.stdout.fileno(), 'w', buffering=1)
 
 
 def agi_send(line: str):
+    """
+    Send a line to Asterisk AGI immediately.
+    """
     print(line, flush=True)
 
 
 def agi_recv() -> str:
+    """
+    Read a single line from standard input.
+    
+    Returns:
+    	str: The input line with trailing whitespace removed.
+    """
     return sys.stdin.readline().strip()
 
 
 def agi_command(cmd: str) -> str:
+    """
+    Sends an AGI command to Asterisk and returns the response.
+    
+    Parameters:
+        cmd (str): The AGI command to send.
+    
+    Returns:
+        str: The response from Asterisk.
+    """
     agi_send(cmd)
     return agi_recv()
 
 
 def main():
+    """
+    Announce a lead context to the verifier.
+    
+    Returns:
+    	int: Status code (always 0)
+    """
     env = {}
     while True:
         line = sys.stdin.readline().strip()

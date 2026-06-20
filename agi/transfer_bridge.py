@@ -32,6 +32,15 @@ class ChannelGoneError(Exception):
 
 
 def _ami_creds(cfg: dict) -> tuple:
+    """
+    Extract AMI connection parameters from configuration.
+    
+    Parameters:
+    	cfg (dict): Configuration dictionary containing an optional 'ami' key with connection parameters.
+    
+    Returns:
+    	tuple: (host, port, username, secret) where host defaults to '127.0.0.1', port to 5038, and username/secret to empty strings.
+    """
     ami = cfg.get('ami', {})
     return (
         ami.get('host', '127.0.0.1'),
@@ -49,7 +58,21 @@ def do_transfer(
     product_name: str = '',
     conf_timeout: int = 30,
 ) -> str:
-    """Synchronous entry point. Returns 'bridged' or 'timeout'."""
+    """
+    Transfer a lead into a ConfBridge-based verifier flow.
+    
+    Parameters:
+        vapi_call_id (str): The VAPI call identifier for locating the lead channel.
+        verifier_number (str): The phone number to call for the verifier.
+        conf_timeout (int): Maximum seconds to wait for the verifier to join the bridge.
+    
+    Returns:
+        str: `"bridged"` if the verifier successfully joins the bridge within the timeout, `"timeout"` otherwise.
+    
+    Raises:
+        AMIConnectionError: If the connection to the Asterisk AMI server fails.
+        ChannelGoneError: If no active channel is found for the given `vapi_call_id`.
+    """
     return asyncio.run(_do_transfer_async(
         cfg=cfg,
         vapi_call_id=vapi_call_id,
@@ -61,6 +84,28 @@ def do_transfer(
 
 
 async def _do_transfer_async(cfg, vapi_call_id, verifier_number, lead_name, product_name, conf_timeout):
+    """
+    Orchestrate the transfer of a VAPI lead into a verifier conference bridge via AMI.
+    
+    Connects to the Asterisk AMI server, locates the lead's active channel, redirects
+    it into the verifier context, originates an outbound call to the verifier, and
+    polls until the verifier joins the bridge or the timeout expires.
+    
+    Parameters:
+    	vapi_call_id (str): Identifier for the VAPI SIP leg to transfer.
+    	verifier_number (str): Phone number to originate the verifier call to.
+    	lead_name (str): Name of the lead passed to the verifier context.
+    	product_name (str): Product name passed to the verifier context.
+    	conf_timeout (int): Maximum seconds to wait for the verifier to join.
+    
+    Returns:
+    	str: "bridged" if the verifier joins the bridge, "timeout" if the verifier
+    	     does not join within the timeout period.
+    
+    Raises:
+    	AMIConnectionError: If connection to the AMI server fails.
+    	ChannelGoneError: If no active Asterisk channel is found for vapi_call_id.
+    """
     host, port, username, secret = _ami_creds(cfg)
 
     manager = panoramisk.Manager(host=host, port=port, username=username, secret=secret)
@@ -127,7 +172,20 @@ async def _do_transfer_async(cfg, vapi_call_id, verifier_number, lead_name, prod
 
 
 async def _find_lead_channel(manager, vapi_call_id: str) -> tuple:
-    """Returns (channel_name, uniqueid, lead_id). Raises ChannelGoneError if not found."""
+    """
+    Locate the active Asterisk channel associated with the given VAPI call ID.
+    
+    Queries AMI to find a channel whose VAPI_CALL_ID variable matches the input,
+    then retrieves the corresponding lead ID.
+    
+    Returns:
+        tuple: A tuple containing (channel_name, uniqueid, lead_id), where channel_name
+            is the matched Asterisk channel name, uniqueid is the channel's unique identifier,
+            and lead_id is the LEAD_ID variable value for that channel.
+    
+    Raises:
+        ChannelGoneError: If no active channel is found with the given VAPI call ID.
+    """
     resp = await manager.send_action({'Action': 'CoreShowChannels'})
     channels = resp if isinstance(resp, list) else []
 
@@ -157,7 +215,12 @@ async def _find_lead_channel(manager, vapi_call_id: str) -> tuple:
 
 
 async def _ami_redirect_lead(manager, channel: str, conf_id: str, lead_id: str):
-    """Set channel variables then redirect lead into [ai-transfer-verifier] exten s."""
+    """
+    Redirect the lead channel into the ai-transfer-verifier dialplan context.
+    
+    Sets channel variables for the conference bridge ID, lead ID, and transfer result
+    before redirecting the channel to extension s of the ai-transfer-verifier context.
+    """
     for var, val in [('CONF_BRIDGE_ID', conf_id), ('LEAD_ID', lead_id), ('TRANSFER_RESULT', 'CALLBK')]:
         await manager.send_action({'Action': 'Setvar', 'Channel': channel, 'Variable': var, 'Value': val})
 
@@ -173,7 +236,13 @@ async def _ami_redirect_lead(manager, channel: str, conf_id: str, lead_id: str):
 
 async def _ami_originate_verifier(manager, verifier_number, conf_id, lead_name, product_name,
                                    lead_id, caller_id, caller_name, timeout_sec):
-    action_id = str(uuid.uuid4())
+    """
+                                   Initiates an outbound verifier call via AMI Originate action.
+                                   
+                                   Returns:
+                                       str: The generated AMI action ID.
+                                   """
+                                   action_id = str(uuid.uuid4())
     endpoint = f"SIP/{verifier_number}@SignalWire"
     variable = ','.join([
         f'CONF_BRIDGE_ID={conf_id}',
@@ -204,7 +273,12 @@ async def _ami_originate_verifier(manager, verifier_number, conf_id, lead_name, 
 
 
 async def _poll_for_verifier(manager, conf_id: str, timeout_sec: int) -> bool:
-    """Poll ConfbridgeList every 500 ms until verifier joins or timeout."""
+    """
+    Wait for the verifier to join the conference bridge.
+    
+    Returns:
+    	`True` if the verifier joins within `timeout_sec`, `False` otherwise.
+    """
     bridge_name = f"XFER-{conf_id}"
     deadline = time.time() + timeout_sec
 
@@ -224,7 +298,12 @@ async def _poll_for_verifier(manager, conf_id: str, timeout_sec: int) -> bool:
 
 
 async def _hangup_vapi_channel(manager, vapi_call_id: str):
-    """Hang up the VAPI SIP channel after verifier joins bridge."""
+    """
+    Terminates the VAPI SIP channel associated with the given call ID.
+    
+    Parameters:
+    	vapi_call_id (str): The VAPI call ID to match and disconnect.
+    """
     resp = await manager.send_action({'Action': 'CoreShowChannels'})
     channels = resp if isinstance(resp, list) else []
 
@@ -245,5 +324,8 @@ async def _hangup_vapi_channel(manager, vapi_call_id: str):
 
 
 def _log_event(event: str, **kwargs):
+    """
+    Emit a structured JSON log record containing the event name, UTC timestamp, and additional fields.
+    """
     record = {"event": event, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **kwargs}
     log.info(json.dumps(record))
