@@ -314,8 +314,8 @@ Working ViciDial + AVR + VAPI configuration from a live AlmaLinux 8 deployment. 
 
 ## License
 
-No license is currently set on this repository. Standard copyright applies — contact the author for usage permission.
-
+MIT License — see [LICENSE](LICENSE) for details.
+Free to use, modify, and distribute with attribution.
 ---
 
 <div align="center">
