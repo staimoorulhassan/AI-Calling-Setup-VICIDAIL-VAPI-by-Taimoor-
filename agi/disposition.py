@@ -39,7 +39,7 @@ def main():
     agi = AGI()
     if len(sys.argv) < 3:
         agi.verbose("disposition: usage: disposition.py <lead_id> <status> [comments]")
-        return
+        sys.exit(2)
 
     lead_id = sys.argv[1]
     status = sys.argv[2]
@@ -50,13 +50,16 @@ def main():
             cfg = yaml.safe_load(fh) or {}
     except FileNotFoundError:
         agi.verbose(f"disposition: config missing: {CONFIG_PATH}")
-        return
+        sys.exit(2)
+    except yaml.YAMLError as exc:
+        agi.verbose(f"disposition: invalid YAML in {CONFIG_PATH}: {exc}")
+        sys.exit(2)
 
     vic = cfg.get("vicidial", {})
     api_url = vic.get("api_url")
     if not api_url:
         agi.verbose("disposition: vicidial.api_url not set in config")
-        return
+        sys.exit(2)
 
     params = {
         "source": vic.get("source", "AIAgent"),

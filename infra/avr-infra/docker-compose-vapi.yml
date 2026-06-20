@@ -41,7 +41,7 @@ services:
     container_name: avr-asterisk
     restart: always
     ports:
-      - 5062:5060/udp    # SIP — using 5061 to avoid conflict with ViciDial's Asterisk on 5060
+      - 5062:5060/udp    # SIP — using 5062 to avoid conflict with ViciDial's Asterisk on 5060
       - 5039:5038        # AMI
       - 8090:8088        # ARI HTTP
       - 8091:8089        # ARI WS
