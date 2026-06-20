@@ -1,0 +1,174 @@
+<svg viewBox="0 0 960 780" xmlns="http://www.w3.org/2000/svg" role="img" font-family="'Segoe UI',system-ui,sans-serif">
+  <title>ACS Full System Dry Run with Latency</title>
+  <desc>End-to-end AI Calling System: Campaign Runner to ViciDial Asterisk to SignalWire to Lead Phone to AMD to AVR Bridge to VAPI AI Agent to Disposition</desc>
+  <rect width="960" height="780" fill="#0f1117"/>
+  <text x="480" y="34" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" letter-spacing="0.5">ACS · Full System Dry Run · Latency Map</text>
+  <text x="480" y="52" text-anchor="middle" fill="#64748b" font-size="11">VPS 161.97.184.140 · AlmaLinux 8 · Asterisk 18 · Docker AVR Stack</text>
+  <rect x="8" y="64" width="944" height="68" rx="6" fill="#1e2433" opacity="0.6"/>
+  <text x="18" y="80" fill="#475569" font-size="9" font-weight="600" letter-spacing="1">ORCHESTRATION</text>
+  <rect x="8" y="140" width="944" height="108" rx="6" fill="#1a2035" opacity="0.7"/>
+  <text x="18" y="156" fill="#475569" font-size="9" font-weight="600" letter-spacing="1">ASTERISK HOST · chan_sip · port 5060</text>
+  <rect x="8" y="256" width="944" height="108" rx="6" fill="#1a2530" opacity="0.7"/>
+  <text x="18" y="272" fill="#475569" font-size="9" font-weight="600" letter-spacing="1">AVR DOCKER STACK · avr network · 172.18.0.x</text>
+  <rect x="8" y="372" width="944" height="80" rx="6" fill="#1a2520" opacity="0.7"/>
+  <text x="18" y="388" fill="#475569" font-size="9" font-weight="600" letter-spacing="1">VAPI CLOUD · assistant: ann · model: Groq GPT-OSS-20B</text>
+  <rect x="8" y="460" width="944" height="68" rx="6" fill="#201a1a" opacity="0.7"/>
+  <text x="18" y="476" fill="#475569" font-size="9" font-weight="600" letter-spacing="1">LEAD / PSTN · SignalWire SIP trunk · asterisk-acs</text>
+  <rect x="8" y="536" width="944" height="68" rx="6" fill="#201820" opacity="0.7"/>
+  <text x="18" y="552" fill="#475569" font-size="9" font-weight="600" letter-spacing="1">DISPOSITION · ViciDial non_agent_api.php · HTTPS localhost</text>
+  <rect x="20" y="78" width="130" height="44" rx="5" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="85" y="96" text-anchor="middle" fill="#93c5fd" font-size="10" font-weight="700">ai_campaign_runner</text>
+  <text x="85" y="110" text-anchor="middle" fill="#64748b" font-size="9">--list N --concurrent 2</text>
+  <rect x="175" y="78" width="110" height="44" rx="5" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1"/>
+  <text x="230" y="96" text-anchor="middle" fill="#93c5fd" font-size="10" font-weight="700">ViciDial DB</text>
+  <text x="230" y="110" text-anchor="middle" fill="#64748b" font-size="9">vicidial_list · MySQL</text>
+  <rect x="310" y="78" width="110" height="44" rx="5" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1"/>
+  <text x="365" y="96" text-anchor="middle" fill="#93c5fd" font-size="10" font-weight="700">AMI Originate</text>
+  <text x="365" y="110" text-anchor="middle" fill="#64748b" font-size="9">port 5038 · async</text>
+  <rect x="28" y="160" width="120" height="72" rx="5" fill="#1e3355" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="88" y="178" text-anchor="middle" fill="#93c5fd" font-size="10" font-weight="700">Asterisk 18</text>
+  <text x="88" y="192" text-anchor="middle" fill="#64748b" font-size="9">ai-campaign-in</text>
+  <text x="88" y="205" text-anchor="middle" fill="#64748b" font-size="9">Answer + Wait(0.5)</text>
+  <text x="88" y="218" text-anchor="middle" fill="#64748b" font-size="9">MixMonitor (wav)</text>
+  <rect x="175" y="160" width="110" height="72" rx="5" fill="#2d2000" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="230" y="178" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="700">AMD</text>
+  <text x="230" y="192" text-anchor="middle" fill="#64748b" font-size="9">precheck_amd.py</text>
+  <text x="230" y="205" text-anchor="middle" fill="#64748b" font-size="9">MACHINE: status A</text>
+  <text x="230" y="218" text-anchor="middle" fill="#64748b" font-size="9">HUMAN: handoff</text>
+  <rect x="312" y="160" width="108" height="72" rx="5" fill="#1e3355" stroke="#60a5fa" stroke-width="1"/>
+  <text x="366" y="178" text-anchor="middle" fill="#93c5fd" font-size="10" font-weight="700">avr-bridge peer</text>
+  <text x="366" y="192" text-anchor="middle" fill="#64748b" font-size="9">SIP 172.18.0.5:5060</text>
+  <text x="366" y="205" text-anchor="middle" fill="#64748b" font-size="9">sip-vicidial.conf</text>
+  <text x="366" y="218" text-anchor="middle" fill="#64748b" font-size="9">ulaw/alaw</text>
+  <rect x="450" y="160" width="118" height="72" rx="5" fill="#1e2535" stroke="#818cf8" stroke-width="1"/>
+  <text x="509" y="178" text-anchor="middle" fill="#a5b4fc" font-size="10" font-weight="700">SignalWire</text>
+  <text x="509" y="192" text-anchor="middle" fill="#64748b" font-size="9">SIP trunk</text>
+  <text x="509" y="205" text-anchor="middle" fill="#64748b" font-size="9">asterisk-acss</text>
+  <text x="509" y="218" text-anchor="middle" fill="#64748b" font-size="9">CID: 17543463674</text>
+  <rect x="28" y="270" width="118" height="76" rx="5" fill="#0f2d2d" stroke="#34d399" stroke-width="1.5"/>
+  <text x="87" y="288" text-anchor="middle" fill="#6ee7b7" font-size="10" font-weight="700">avr-asterisk</text>
+  <text x="87" y="302" text-anchor="middle" fill="#64748b" font-size="9">PJSIP · 5062/udp</text>
+  <text x="87" y="315" text-anchor="middle" fill="#64748b" font-size="9">AudioSocket app</text>
+  <text x="87" y="328" text-anchor="middle" fill="#64748b" font-size="9">avr-core:9093</text>
+  <rect x="168" y="270" width="118" height="76" rx="5" fill="#0f2d2d" stroke="#34d399" stroke-width="1.5"/>
+  <text x="227" y="288" text-anchor="middle" fill="#6ee7b7" font-size="10" font-weight="700">avr-core</text>
+  <text x="227" y="302" text-anchor="middle" fill="#64748b" font-size="9">audio orchestrator</text>
+  <text x="227" y="315" text-anchor="middle" fill="#64748b" font-size="9">PCM 8kHz stream</text>
+  <text x="227" y="328" text-anchor="middle" fill="#64748b" font-size="9">avr-sts-vapi</text>
+  <rect x="308" y="270" width="118" height="76" rx="5" fill="#0f2d2d" stroke="#34d399" stroke-width="1.5"/>
+  <text x="367" y="288" text-anchor="middle" fill="#6ee7b7" font-size="10" font-weight="700">avr-sts-vapi</text>
+  <text x="367" y="302" text-anchor="middle" fill="#64748b" font-size="9">index.js · WS client</text>
+  <text x="367" y="315" text-anchor="middle" fill="#64748b" font-size="9">PUBLIC key auth</text>
+  <text x="367" y="328" text-anchor="middle" fill="#64748b" font-size="9">/call/web endpoint</text>
+  <rect x="448" y="270" width="118" height="76" rx="5" fill="#0f2d2d" stroke="#34d399" stroke-width="1"/>
+  <text x="507" y="288" text-anchor="middle" fill="#6ee7b7" font-size="10" font-weight="700">avr-ami</text>
+  <text x="507" y="302" text-anchor="middle" fill="#64748b" font-size="9">AMI listener</text>
+  <text x="507" y="315" text-anchor="middle" fill="#64748b" font-size="9">FINAL_STATUS var</text>
+  <text x="507" y="328" text-anchor="middle" fill="#64748b" font-size="9">webhook SetVar</text>
+  <rect x="28" y="386" width="118" height="54" rx="5" fill="#0f2d1a" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="87" y="404" text-anchor="middle" fill="#86efac" font-size="10" font-weight="700">VAPI STT</text>
+  <text x="87" y="418" text-anchor="middle" fill="#64748b" font-size="9">speech to text</text>
+  <text x="87" y="430" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">~120ms</text>
+  <rect x="168" y="386" width="118" height="54" rx="5" fill="#0f2d1a" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="227" y="404" text-anchor="middle" fill="#86efac" font-size="10" font-weight="700">Groq LLM</text>
+  <text x="227" y="418" text-anchor="middle" fill="#64748b" font-size="9">GPT-OSS-20B</text>
+  <text x="227" y="430" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">~280ms</text>
+  <rect x="308" y="386" width="118" height="54" rx="5" fill="#0f2d1a" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="367" y="404" text-anchor="middle" fill="#86efac" font-size="10" font-weight="700">VAPI TTS</text>
+  <text x="367" y="418" text-anchor="middle" fill="#64748b" font-size="9">text to speech</text>
+  <text x="367" y="430" text-anchor="middle" fill="#34d399" font-size="9" font-weight="700">~200ms</text>
+  <rect x="590" y="474" width="118" height="44" rx="5" fill="#2d1a1a" stroke="#f87171" stroke-width="1.5"/>
+  <text x="649" y="492" text-anchor="middle" fill="#fca5a5" font-size="10" font-weight="700">Lead Phone</text>
+  <text x="649" y="506" text-anchor="middle" fill="#64748b" font-size="9">+12233445562</text>
+  <rect x="28" y="550" width="130" height="44" rx="5" fill="#2d1a2d" stroke="#c084fc" stroke-width="1.5"/>
+  <text x="93" y="568" text-anchor="middle" fill="#e9d5ff" font-size="10" font-weight="700">disposition.py</text>
+  <text x="93" y="582" text-anchor="middle" fill="#64748b" font-size="9">h-exten AGI</text>
+  <rect x="190" y="550" width="130" height="44" rx="5" fill="#2d1a2d" stroke="#c084fc" stroke-width="1"/>
+  <text x="255" y="568" text-anchor="middle" fill="#e9d5ff" font-size="10" font-weight="700">ViciDial API</text>
+  <text x="255" y="582" text-anchor="middle" fill="#64748b" font-size="9">update_lead · HTTPS</text>
+  <rect x="360" y="550" width="55" height="20" rx="3" fill="#1a2d1a" stroke="#22c55e" stroke-width="1"/>
+  <text x="387" y="564" text-anchor="middle" fill="#86efac" font-size="9" font-weight="600">SCHDL</text>
+  <rect x="420" y="550" width="42" height="20" rx="3" fill="#2d2000" stroke="#f59e0b" stroke-width="1"/>
+  <text x="441" y="564" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="600">DROP</text>
+  <rect x="467" y="550" width="32" height="20" rx="3" fill="#2d1a00" stroke="#f97316" stroke-width="1"/>
+  <text x="483" y="564" text-anchor="middle" fill="#fdba74" font-size="9" font-weight="600">NI</text>
+  <rect x="504" y="550" width="28" height="20" rx="3" fill="#2d0000" stroke="#ef4444" stroke-width="1"/>
+  <text x="518" y="564" text-anchor="middle" fill="#fca5a5" font-size="9" font-weight="600">A</text>
+  <rect x="537" y="550" width="42" height="20" rx="3" fill="#2d0000" stroke="#ef4444" stroke-width="1"/>
+  <text x="558" y="564" text-anchor="middle" fill="#fca5a5" font-size="9" font-weight="600">DAIR</text>
+  <rect x="20" y="630" width="920" height="108" rx="6" fill="#111827" stroke="#1e2433" stroke-width="1"/>
+  <text x="480" y="648" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="0.5">DRY-RUN LATENCY TIMELINE  (human answer to first AI word)</text>
+  <rect x="30" y="658" width="80" height="20" rx="2" fill="#3b82f6" opacity="0.8"/>
+  <text x="70" y="672" text-anchor="middle" fill="#fff" font-size="8.5" font-weight="600">SIP dial ~80ms</text>
+  <rect x="112" y="658" width="200" height="20" rx="2" fill="#f59e0b" opacity="0.8"/>
+  <text x="212" y="672" text-anchor="middle" fill="#111" font-size="8.5" font-weight="600">AMD detect ~200ms</text>
+  <rect x="314" y="658" width="50" height="20" rx="2" fill="#34d399" opacity="0.8"/>
+  <text x="339" y="672" text-anchor="middle" fill="#111" font-size="7.5" font-weight="600">WS ~50ms</text>
+  <rect x="366" y="658" width="120" height="20" rx="2" fill="#22c55e" opacity="0.7"/>
+  <text x="426" y="672" text-anchor="middle" fill="#111" font-size="8.5" font-weight="600">STT ~120ms</text>
+  <rect x="488" y="658" width="280" height="20" rx="2" fill="#10b981" opacity="0.8"/>
+  <text x="628" y="672" text-anchor="middle" fill="#111" font-size="8.5" font-weight="600">Groq LLM ~280ms (was 800ms Haiku)</text>
+  <rect x="770" y="658" width="160" height="20" rx="2" fill="#059669" opacity="0.8"/>
+  <text x="850" y="672" text-anchor="middle" fill="#fff" font-size="8.5" font-weight="600">TTS ~200ms</text>
+  <line x1="30" y1="682" x2="930" y2="682" stroke="#334155" stroke-width="0.5"/>
+  <text x="30" y="696" fill="#475569" font-size="8">0ms</text>
+  <text x="112" y="696" fill="#475569" font-size="8">80</text>
+  <text x="314" y="696" fill="#475569" font-size="8">280</text>
+  <text x="366" y="696" fill="#475569" font-size="8">330</text>
+  <text x="488" y="696" fill="#475569" font-size="8">450</text>
+  <text x="770" y="696" fill="#475569" font-size="8">730</text>
+  <text x="930" y="696" fill="#475569" font-size="8">930ms</text>
+  <text x="480" y="714" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Total: ~930ms answer-to-first-word · Previous (Haiku): ~1,450ms · Saved: ~520ms</text>
+  <text x="480" y="730" text-anchor="middle" fill="#64748b" font-size="9">Recording: MixMonitor to /var/spool/asterisk/monitorDONE/ · Apache: https://161.97.184.140/recordings/</text>
+  <rect x="596" y="394" width="108" height="28" rx="3" fill="#064e3b" stroke="#059669" stroke-width="1"/>
+  <text x="650" y="406" text-anchor="middle" fill="#6ee7b7" font-size="8.5" font-weight="700">Groq GPT-OSS-20B</text>
+  <text x="650" y="418" text-anchor="middle" fill="#34d399" font-size="8.5">280ms vs 800ms Haiku</text>
+  <rect x="596" y="84" width="130" height="40" rx="3" fill="#0c1a2e" stroke="#3b82f6" stroke-width="1"/>
+  <text x="661" y="98" text-anchor="middle" fill="#93c5fd" font-size="8.5" font-weight="700">asyncio.Semaphore(N)</text>
+  <text x="661" y="110" text-anchor="middle" fill="#64748b" font-size="8">released on AMI Hangup</text>
+  <text x="661" y="120" text-anchor="middle" fill="#64748b" font-size="8">--concurrent controls slots</text>
+  <rect x="750" y="160" width="170" height="70" rx="3" fill="#111827" stroke="#334155" stroke-width="1"/>
+  <text x="835" y="175" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-weight="700">/etc/ai_agent/config.yaml</text>
+  <text x="760" y="190" fill="#64748b" font-size="8">ami: cron / 1234 · port 5038</text>
+  <text x="760" y="203" fill="#64748b" font-size="8">outbound: 17543463674</text>
+  <text x="760" y="216" fill="#64748b" font-size="8">vicidial: 6666 / [redacted]</text>
+  <text x="760" y="229" fill="#64748b" font-size="8">verify_tls: false</text>
+  <rect x="750" y="270" width="170" height="56" rx="3" fill="#111827" stroke="#334155" stroke-width="1"/>
+  <text x="835" y="285" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-weight="700">/opt/avr/avr-infra/.env</text>
+  <text x="760" y="300" fill="#64748b" font-size="8">VAPI_PUBLIC_KEY=...</text>
+  <text x="760" y="313" fill="#64748b" font-size="8">VAPI_ASSISTANT_ID=...</text>
+  <text x="760" y="326" fill="#64748b" font-size="8">VAD thresholds: 0.001</text>
+  <rect x="750" y="460" width="170" height="56" rx="3" fill="#111827" stroke="#334155" stroke-width="1"/>
+  <text x="835" y="475" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-weight="700">Recordings</text>
+  <text x="760" y="490" fill="#64748b" font-size="8">MixMonitor: ai-YYYYMMDD-{id}.wav</text>
+  <text x="760" y="503" fill="#64748b" font-size="8">Apache /recordings/ basic auth</text>
+  <text x="760" y="516" fill="#64748b" font-size="8">https://161.97.184.140/recordings/</text>
+  <defs>
+    <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L6,3 z" fill="#64748b"/>
+    </marker>
+    <marker id="arr2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L6,3 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <line x1="150" y1="100" x2="173" y2="100" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="285" y1="100" x2="308" y2="100" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="365" y1="122" x2="365" y2="145" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr)"/>
+  <line x1="365" y1="145" x2="120" y2="165" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr)"/>
+  <line x1="148" y1="185" x2="448" y2="185" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="568" y1="205" x2="640" y2="460" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="148" y1="196" x2="173" y2="196" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="285" y1="196" x2="310" y2="196" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="366" y1="232" x2="87" y2="268" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="146" y1="308" x2="166" y2="308" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="286" y1="308" x2="306" y2="308" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="367" y1="346" x2="87" y2="384" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="146" y1="413" x2="166" y2="413" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="286" y1="413" x2="306" y2="413" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="426" y1="440" x2="367" y2="346" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,2" opacity="0.6" marker-end="url(#arr2)"/>
+  <line x1="230" y1="232" x2="93" y2="548" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2" opacity="0.7" marker-end="url(#arr2)"/>
+  <line x1="87" y1="232" x2="93" y2="548" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2" opacity="0.5" marker-end="url(#arr2)"/>
+  <line x1="158" y1="572" x2="188" y2="572" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="507" y1="346" x2="507" y2="530" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>
+  <line x1="507" y1="530" x2="158" y2="572" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2" opacity="0.6" marker-end="url(#arr2)"/>
+</svg>
