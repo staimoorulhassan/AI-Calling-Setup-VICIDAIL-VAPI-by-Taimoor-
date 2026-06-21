@@ -80,50 +80,49 @@ async def _do_transfer_async(cfg, vapi_call_id, verifier_number, lead_name, prod
     outbound_cfg = cfg.get('outbound', {})
     caller_id = outbound_cfg.get('caller_id_num', '')
     caller_name = outbound_cfg.get('caller_id_name', 'ACS Transfer')
+    sip_trunk = outbound_cfg.get('sip_trunk', 'SignalWire')
 
-    await _ami_redirect_lead(manager, lead_channel, conf_id, lead_id)
+    try:
+        await _ami_redirect_lead(manager, lead_channel, conf_id, lead_id)
 
-    await _ami_originate_verifier(
-        manager=manager,
-        verifier_number=verifier_number,
-        conf_id=conf_id,
-        lead_name=lead_name,
-        product_name=product_name,
-        lead_id=lead_id,
-        caller_id=caller_id,
-        caller_name=caller_name,
-        timeout_sec=conf_timeout,
-    )
+        await _ami_originate_verifier(
+            manager=manager,
+            verifier_number=verifier_number,
+            conf_id=conf_id,
+            lead_name=lead_name,
+            product_name=product_name,
+            lead_id=lead_id,
+            caller_id=caller_id,
+            caller_name=caller_name,
+            timeout_sec=conf_timeout,
+            sip_trunk=sip_trunk,
+        )
 
-    verifier_joined = await _poll_for_verifier(manager, conf_id, conf_timeout)
+        verifier_joined = await _poll_for_verifier(manager, conf_id, conf_timeout)
 
-    if not verifier_joined:
+        if not verifier_joined:
+            # Hang up lead channel so they are not stranded in ConfBridge
+            try:
+                await manager.send_action({'Action': 'Hangup', 'Channel': lead_channel, 'Cause': '16'})
+            except Exception:
+                pass
+            _log_event("transfer_timeout_callbk", vapi_call_id=vapi_call_id, conf_id=conf_id)
+            return "timeout"
+
         try:
             await manager.send_action({
                 'Action': 'Setvar',
                 'Channel': lead_channel,
                 'Variable': 'TRANSFER_RESULT',
-                'Value': 'CALLBK',
+                'Value': 'SCHDL',
             })
         except Exception:
             pass
+
+        await _hangup_vapi_channel(manager, vapi_call_id)
+        return "bridged"
+    finally:
         manager.close()
-        _log_event("transfer_timeout_callbk", vapi_call_id=vapi_call_id, conf_id=conf_id)
-        return "timeout"
-
-    try:
-        await manager.send_action({
-            'Action': 'Setvar',
-            'Channel': lead_channel,
-            'Variable': 'TRANSFER_RESULT',
-            'Value': 'SCHDL',
-        })
-    except Exception:
-        pass
-
-    await _hangup_vapi_channel(manager, vapi_call_id)
-    manager.close()
-    return "bridged"
 
 
 async def _find_lead_channel(manager, vapi_call_id: str) -> tuple:
@@ -172,9 +171,9 @@ async def _ami_redirect_lead(manager, channel: str, conf_id: str, lead_id: str):
 
 
 async def _ami_originate_verifier(manager, verifier_number, conf_id, lead_name, product_name,
-                                   lead_id, caller_id, caller_name, timeout_sec):
+                                   lead_id, caller_id, caller_name, timeout_sec, sip_trunk='SignalWire'):
     action_id = str(uuid.uuid4())
-    endpoint = f"SIP/{verifier_number}@SignalWire"
+    endpoint = f"SIP/{verifier_number}@{sip_trunk}"
     variable = ','.join([
         f'CONF_BRIDGE_ID={conf_id}',
         f'LEAD_NAME={lead_name}',

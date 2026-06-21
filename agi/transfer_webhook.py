@@ -61,11 +61,13 @@ def vapi_tool_call():
 
     # Validate webhook secret (FR security)
     expected_secret = transfer_cfg.get('webhook_secret', '')
-    if expected_secret:
-        incoming = request.headers.get('x-vapi-secret', '')
-        if incoming != expected_secret:
-            log.warning(json.dumps({"event": "webhook_auth_failed", "ip": request.remote_addr}))
-            return jsonify({"error": "unauthorized"}), 401
+    if not expected_secret:
+        log.error(json.dumps({"event": "webhook_secret_not_configured"}))
+        return jsonify({"error": "server misconfiguration: webhook_secret not set"}), 500
+    incoming = request.headers.get('x-vapi-secret', '')
+    if incoming != expected_secret:
+        log.warning(json.dumps({"event": "webhook_auth_failed", "ip": request.remote_addr}))
+        return jsonify({"error": "unauthorized"}), 401
 
     body = request.get_json(silent=True) or {}
 

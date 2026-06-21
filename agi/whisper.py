@@ -13,7 +13,7 @@ before ConfBridge() executes, so the lead cannot hear this.
 import os
 import sys
 
-sys.stdout = open(sys.stdout.fileno(), 'w', buffering=1)
+sys.stdout.reconfigure(line_buffering=True)
 
 
 def agi_send(line: str):
