@@ -17,19 +17,28 @@ sys.stdout.reconfigure(line_buffering=True)
 
 
 def agi_send(line: str):
+    """Write one AGI command line to stdout and flush immediately."""
     print(line, flush=True)
 
 
 def agi_recv() -> str:
+    """Read one AGI response line from stdin."""
     return sys.stdin.readline().strip()
 
 
 def agi_command(cmd: str) -> str:
+    """Send an AGI command and return the response line."""
     agi_send(cmd)
     return agi_recv()
 
 
 def main():
+    """AGI entry point — read environment variables then play the whisper announcement.
+
+    Asterisk passes agi_arg_1=LEAD_NAME and agi_arg_2=PRODUCT_NAME.
+    Plays a custom sound file if present; falls back to Festival TTS.
+    Returns 0 on success.
+    """
     env = {}
     while True:
         line = sys.stdin.readline().strip()

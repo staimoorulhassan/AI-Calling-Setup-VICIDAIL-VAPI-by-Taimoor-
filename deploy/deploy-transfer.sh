@@ -4,7 +4,8 @@
 # Handles T002 T004 T006 T007
 
 set -euo pipefail
-VPS="161.97.184.140"
+# Set VPS to your server's IP or hostname before running
+VPS="${ACS_VPS:-161.97.184.140}"
 
 echo "=== ACS Transfer Deploy ==="
 

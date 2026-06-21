@@ -13,7 +13,7 @@ import logging
 import time
 import yaml
 from flask import Flask, request, jsonify
-from transfer_bridge import do_transfer, AMIConnectionError, ChannelGoneError
+from transfer_bridge import do_transfer, AMIConnectionError, ChannelGoneError, InvalidVerifierError
 
 app = Flask(__name__)
 
@@ -30,6 +30,7 @@ _IN_FLIGHT_TTL = 60
 
 
 def _load_config():
+    """Load and cache /etc/ai_agent/config.yaml. Returns the parsed dict."""
     global _CONFIG
     if _CONFIG is None:
         with open('/etc/ai_agent/config.yaml', 'r') as f:
@@ -38,11 +39,13 @@ def _load_config():
 
 
 def _structured(event: str, **kwargs):
+    """Emit a structured JSON log line with an ISO-8601 UTC timestamp."""
     record = {"event": event, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **kwargs}
     log.info(json.dumps(record))
 
 
 def _purge_in_flight():
+    """Remove stale in-flight entries older than _IN_FLIGHT_TTL seconds."""
     cutoff = time.time() - _IN_FLIGHT_TTL
     stale = [k for k, v in _in_flight.items() if v < cutoff]
     for k in stale:
@@ -51,11 +54,18 @@ def _purge_in_flight():
 
 @app.route('/health', methods=['GET'])
 def health():
+    """Liveness probe — returns 200 OK if the server is running."""
     return jsonify({"status": "ok"})
 
 
 @app.route('/webhooks/vapi/tool-call', methods=['POST'])
 def vapi_tool_call():
+    """Handle VAPI tool-call webhook for the request_transfer tool.
+
+    Expects JSON body: {message: {call: {id}, toolCallList: [{id, name, parameters}]}}
+    Validates x-vapi-secret header, deduplicates in-flight transfers (FR-007),
+    and orchestrates a 3-way ConfBridge via transfer_bridge.do_transfer().
+    """
     cfg = _load_config()
     transfer_cfg = cfg.get('transfer', {})
 
@@ -122,6 +132,12 @@ def vapi_tool_call():
             product_name=product_name,
             conf_timeout=timeout,
         )
+    except InvalidVerifierError as exc:
+        del _in_flight[vapi_call_id]
+        _structured("transfer_failed", call_id=vapi_call_id, reason="invalid_verifier", detail=str(exc))
+        return jsonify({
+            "results": [{"toolCallId": tool_call_id, "result": "Transfer failed — verifier number not configured."}],
+        }), 422
     except AMIConnectionError as exc:
         del _in_flight[vapi_call_id]
         _structured("transfer_failed", call_id=vapi_call_id, reason="ami_unavailable", detail=str(exc))
