@@ -30,7 +30,14 @@ _IN_FLIGHT_TTL = 60
 
 
 def _load_config():
-    """Load and cache /etc/ai_agent/config.yaml. Returns the parsed dict."""
+    """
+    Load and cache the YAML configuration from `/etc/ai_agent/config.yaml`.
+    
+    On the first call, reads and parses the configuration file. Subsequent calls return the cached result.
+    
+    Returns:
+        dict: The parsed YAML configuration.
+    """
     global _CONFIG
     if _CONFIG is None:
         with open('/etc/ai_agent/config.yaml', 'r') as f:
@@ -39,7 +46,13 @@ def _load_config():
 
 
 def _structured(event: str, **kwargs):
-    """Emit a structured JSON log line with an ISO-8601 UTC timestamp."""
+    """
+    Log a structured JSON record with an event name, timestamp, and optional metadata.
+    
+    Parameters:
+    	event (str): The event identifier to include in the log record
+    	**kwargs: Additional key-value pairs to include in the log record
+    """
     record = {"event": event, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **kwargs}
     log.info(json.dumps(record))
 

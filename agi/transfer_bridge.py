@@ -156,7 +156,20 @@ async def _do_transfer_async(cfg, vapi_call_id, verifier_number, lead_name, prod
 
 
 async def _find_lead_channel(manager, vapi_call_id: str) -> tuple:
-    """Returns (channel_name, uniqueid, lead_id). Raises ChannelGoneError if not found."""
+    """
+    Locate the active Asterisk channel associated with the given VAPI call ID.
+    
+    Queries AMI to find a channel whose VAPI_CALL_ID variable matches the input,
+    then retrieves the corresponding lead ID.
+    
+    Returns:
+        tuple: A tuple containing (channel_name, uniqueid, lead_id), where channel_name
+            is the matched Asterisk channel name, uniqueid is the channel's unique identifier,
+            and lead_id is the LEAD_ID variable value for that channel.
+    
+    Raises:
+        ChannelGoneError: If no active channel is found with the given VAPI call ID.
+    """
     resp = await manager.send_action({'Action': 'CoreShowChannels'})
     channels = resp if isinstance(resp, list) else []
 
@@ -186,7 +199,12 @@ async def _find_lead_channel(manager, vapi_call_id: str) -> tuple:
 
 
 async def _ami_redirect_lead(manager, channel: str, conf_id: str, lead_id: str):
-    """Set channel variables then redirect lead into [ai-transfer-verifier] exten s."""
+    """
+    Redirect the lead channel into the ai-transfer-verifier dialplan context.
+    
+    Sets channel variables for the conference bridge ID, lead ID, and transfer result
+    before redirecting the channel to extension s of the ai-transfer-verifier context.
+    """
     for var, val in [('CONF_BRIDGE_ID', conf_id), ('LEAD_ID', lead_id), ('TRANSFER_RESULT', 'CALLBK')]:
         await manager.send_action({'Action': 'Setvar', 'Channel': channel, 'Variable': var, 'Value': val})
 
@@ -250,7 +268,12 @@ async def _ami_originate_verifier(manager, verifier_number, conf_id, lead_name, 
 
 
 async def _poll_for_verifier(manager, conf_id: str, timeout_sec: int) -> bool:
-    """Poll ConfbridgeList every 500 ms until verifier joins or timeout."""
+    """
+    Wait for the verifier to join the conference bridge.
+    
+    Returns:
+    	`True` if the verifier joins within `timeout_sec`, `False` otherwise.
+    """
     bridge_name = f"XFER-{conf_id}"
     deadline = time.time() + timeout_sec
 
@@ -270,7 +293,12 @@ async def _poll_for_verifier(manager, conf_id: str, timeout_sec: int) -> bool:
 
 
 async def _hangup_vapi_channel(manager, vapi_call_id: str):
-    """Hang up the VAPI SIP channel after verifier joins bridge."""
+    """
+    Terminates the VAPI SIP channel associated with the given call ID.
+    
+    Parameters:
+    	vapi_call_id (str): The VAPI call ID to match and disconnect.
+    """
     resp = await manager.send_action({'Action': 'CoreShowChannels'})
     channels = resp if isinstance(resp, list) else []
 
