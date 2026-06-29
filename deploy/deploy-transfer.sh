@@ -4,13 +4,19 @@
 # Handles T002 T004 T006 T007
 
 set -euo pipefail
-VPS="161.97.184.140"
+# Set VPS to your server's IP or hostname before running
+VPS="${ACS_VPS:-161.97.184.140}"
 
 echo "=== ACS Transfer Deploy ==="
 
-echo "[1/6] Deploying AGI scripts..."
-ssh root@"$VPS" "mkdir -p /opt/acs/agi"
+echo "[1/6] Creating service user and deploying AGI scripts..."
+ssh root@"$VPS" '
+  id acs &>/dev/null || useradd -r -s /sbin/nologin -d /opt/acs acs
+  mkdir -p /opt/acs/agi
+  chown -R acs:acs /opt/acs
+'
 scp agi/transfer_webhook.py agi/transfer_bridge.py agi/whisper.py root@"$VPS":/opt/acs/agi/
+ssh root@"$VPS" "chown acs:acs /opt/acs/agi/*.py"
 
 echo "[2/6] Installing Python dependencies..."
 ssh root@"$VPS" "python3.11 -m pip install flask pyyaml panoramisk --quiet"

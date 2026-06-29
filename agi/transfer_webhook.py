@@ -13,7 +13,7 @@ import logging
 import time
 import yaml
 from flask import Flask, request, jsonify
-from transfer_bridge import do_transfer, AMIConnectionError, ChannelGoneError
+from transfer_bridge import do_transfer, AMIConnectionError, ChannelGoneError, InvalidVerifierError
 
 app = Flask(__name__)
 
@@ -58,9 +58,7 @@ def _structured(event: str, **kwargs):
 
 
 def _purge_in_flight():
-    """
-    Remove stale entries from the in-flight tracking map based on the configured TTL.
-    """
+    """Remove stale in-flight entries older than _IN_FLIGHT_TTL seconds."""
     cutoff = time.time() - _IN_FLIGHT_TTL
     stale = [k for k, v in _in_flight.items() if v < cutoff]
     for k in stale:
@@ -69,33 +67,30 @@ def _purge_in_flight():
 
 @app.route('/health', methods=['GET'])
 def health():
-    """
-    Check the health status of the webhook server.
-    
-    Returns:
-    	A Flask Response with JSON containing `{"status": "ok"}`.
-    """
+    """Liveness probe — returns 200 OK if the server is running."""
     return jsonify({"status": "ok"})
 
 
 @app.route('/webhooks/vapi/tool-call', methods=['POST'])
 def vapi_tool_call():
-    """
-    Initiates a conference bridge transfer in response to a VAPI webhook event.
-    
-    Returns:
-        tuple: A Flask response tuple containing a JSON response object with tool call results and status information, plus an HTTP status code.
+    """Handle VAPI tool-call webhook for the request_transfer tool.
+
+    Expects JSON body: {message: {call: {id}, toolCallList: [{id, name, parameters}]}}
+    Validates x-vapi-secret header, deduplicates in-flight transfers (FR-007),
+    and orchestrates a 3-way ConfBridge via transfer_bridge.do_transfer().
     """
     cfg = _load_config()
     transfer_cfg = cfg.get('transfer', {})
 
     # Validate webhook secret (FR security)
     expected_secret = transfer_cfg.get('webhook_secret', '')
-    if expected_secret:
-        incoming = request.headers.get('x-vapi-secret', '')
-        if incoming != expected_secret:
-            log.warning(json.dumps({"event": "webhook_auth_failed", "ip": request.remote_addr}))
-            return jsonify({"error": "unauthorized"}), 401
+    if not expected_secret:
+        log.error(json.dumps({"event": "webhook_secret_not_configured"}))
+        return jsonify({"error": "server misconfiguration: webhook_secret not set"}), 500
+    incoming = request.headers.get('x-vapi-secret', '')
+    if incoming != expected_secret:
+        log.warning(json.dumps({"event": "webhook_auth_failed", "ip": request.remote_addr}))
+        return jsonify({"error": "unauthorized"}), 401
 
     body = request.get_json(silent=True) or {}
 
@@ -150,6 +145,12 @@ def vapi_tool_call():
             product_name=product_name,
             conf_timeout=timeout,
         )
+    except InvalidVerifierError as exc:
+        del _in_flight[vapi_call_id]
+        _structured("transfer_failed", call_id=vapi_call_id, reason="invalid_verifier", detail=str(exc))
+        return jsonify({
+            "results": [{"toolCallId": tool_call_id, "result": "Transfer failed — verifier number not configured."}],
+        }), 422
     except AMIConnectionError as exc:
         del _in_flight[vapi_call_id]
         _structured("transfer_failed", call_id=vapi_call_id, reason="ami_unavailable", detail=str(exc))

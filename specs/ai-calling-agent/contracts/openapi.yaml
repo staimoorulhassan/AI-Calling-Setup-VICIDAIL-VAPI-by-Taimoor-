@@ -531,10 +531,33 @@ paths:
           application/json:
             schema:
               type: object
+              description: >
+                VAPI event envelope. For tool-call events the payload is nested under `message`.
               properties:
-                type:    { type: string, example: "end-of-call-report" }
-                call:    { type: object }
-                message: { type: object }
+                message:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      example: "tool-calls"
+                    call:
+                      type: object
+                      properties:
+                        id: { type: string, description: "VAPI call UUID" }
+                    toolCallList:
+                      type: array
+                      items:
+                        type: object
+                        required: [id, name, parameters]
+                        properties:
+                          id:         { type: string }
+                          name:       { type: string, example: "request_transfer" }
+                          parameters:
+                            type: object
+                            properties:
+                              verifier_number: { type: string, example: "+17543463674" }
+                              lead_name:       { type: string }
+                              product_name:    { type: string }
       responses:
         "200": { description: Event processed }
         "401": { description: Invalid webhook secret }

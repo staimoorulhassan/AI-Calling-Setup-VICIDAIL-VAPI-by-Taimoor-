@@ -21,6 +21,17 @@ vapi:
   assistant_id: "REPLACE_ME"
   notes: "AI assistant configured via VAPI dashboard"
 
+ami:
+  host: "127.0.0.1"             # Asterisk AMI host (usually localhost)
+  port: 5038                     # AMI port (default 5038)
+  username: "REPLACE_ME"        # AMI manager username (from /etc/asterisk/manager.conf)
+  secret: "REPLACE_ME"          # AMI manager secret
+
+outbound:
+  caller_id_num: "REPLACE_ME"   # Outbound caller ID number shown to verifier e.g. +17543463674
+  caller_id_name: "ACS Transfer" # Caller ID name shown on verifier's phone
+  sip_trunk: "SignalWire"        # SIP trunk name as defined in pjsip.conf / sip.conf
+
 transfer:
   verifier_number: "REPLACE_ME"    # E.164 format e.g. +17543463674
   whisper_sound: "acs-transfer"    # sound file basename in /var/lib/asterisk/sounds/custom/
