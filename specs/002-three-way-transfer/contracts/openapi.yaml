@@ -1,0 +1,129 @@
+openapi: "3.0.3"
+info:
+  title: ACS 3-Way Transfer API
+  version: "1.0.0"
+
+servers:
+  - url: http://161.97.184.140:8088
+    description: VPS webhook server
+  - url: http://161.97.184.140:3001
+    description: NestJS backend
+
+paths:
+  /webhooks/vapi/tool-call:
+    post:
+      summary: VAPI tool-call webhook (AI-triggered transfer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [call_id, function]
+              properties:
+                call_id:
+                  type: string
+                  example: "vapi-call-abc123"
+                function:
+                  type: string
+                  enum: [request_transfer]
+                parameters:
+                  type: object
+                  properties:
+                    verifier_number:
+                      type: string
+                      description: Optional override; falls back to config
+                      example: "+17543463674"
+                    lead_name:
+                      type: string
+                      example: "John Smith"
+                    product_name:
+                      type: string
+                      example: "Solar Panels"
+      responses:
+        "200":
+          description: Transfer initiated or already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [initiated, already_in_progress]
+        "410":
+          description: Lead channel no longer active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: AMI unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/calls/{call_id}/transfer:
+    post:
+      summary: Operator manual transfer trigger
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: call_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [verifier_number]
+              properties:
+                verifier_number:
+                  type: string
+                  example: "+17543463674"
+      responses:
+        "200":
+          description: Transfer initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferStatus"
+        "409":
+          description: Call already in transfer state
+        "404":
+          description: Call not found or inactive
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    TransferStatus:
+      type: object
+      properties:
+        call_id:
+          type: string
+        state:
+          type: string
+          enum: [pending, bridged, failed, completed]
+        initiated_by:
+          type: string
+          enum: [ai, operator]
+        initiated_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string

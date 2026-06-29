@@ -1,0 +1,20 @@
+[Unit]
+Description=ACS Transfer Webhook Server
+After=network.target
+
+[Service]
+Type=simple
+User=acs
+Group=acs
+WorkingDirectory=/opt/acs/agi
+ExecStart=/usr/bin/env python3 /opt/acs/agi/transfer_webhook.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
