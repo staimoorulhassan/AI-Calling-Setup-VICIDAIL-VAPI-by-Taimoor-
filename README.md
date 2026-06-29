@@ -265,7 +265,7 @@ Calls are recorded by MixMonitor on the ViciDial Asterisk side and saved locally
 
 ---
 
-## VPS File Map (Contabo `161.97.184.140`)
+## VPS File Map (Contabo `YOUR-SERVER-IP`)
 
 ```
 /var/lib/asterisk/agi-bin/
